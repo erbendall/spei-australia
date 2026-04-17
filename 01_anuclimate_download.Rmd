@@ -1,0 +1,357 @@
+---
+title: "Accessing ANUClimate v2.0 Data via NCI THREDDS"
+author: "Eli R. Bendall, Hawkesbury Institute for the Environment, Western Sydney University"
+orcid: "0000-0002-9120-3457"
+date: "`r Sys.Date()`"
+note: "Code developed with AI assistance from Claude (Anthropic), https://claude.ai"
+output: html_document
+---
+
+# Overview
+
+This guide walks through downloading ANUClimate v2.0 monthly climate data
+from the NCI THREDDS server for use in the SPEI pipeline on a local machine.
+No NCI account is required — the data is publicly accessible via the THREDDS
+HTTP file server.
+
+**Data source:** ANUClimate v2.0 (Hutchinson et al., ANU/NCI)
+**DOI:** https://doi.org/10.25914/60a10acd183a2
+**Coverage:** Australian continent, 0.01° resolution, 1900 to present
+**Variables downloaded:** rain, tmax, tmin, srad
+**Download period:** January 1980 to December 2024 (required for SPEI pipeline)
+
+---
+
+# Chunk 1 — Install and load packages
+
+```{r setup, message=FALSE, warning=FALSE}
+# Install if needed (run once)
+# install.packages("here")
+# install.packages("lubridate")
+
+library(here)
+library(lubridate)
+```
+
+---
+
+# Chunk 2 — Define base path and variables
+
+Set the base path to wherever you want to store the downloaded data.
+This should be on a drive with at least **50GB free space** — the full
+download is approximately 35GB.
+
+```{r paths}
+# Set your base download path — adjust to your local drive
+base_path <- "/path/to/anuclimate_data"  # Update to your local data directory
+
+# Variables to download
+variables <- c("rain", "tmax", "tmin", "srad")
+
+# Date range — 1980 to 2024
+# Jan 1980 provides the 30-year reference period (1980-2009)
+# Dec 2024 is the end of the output period
+dates  <- seq(as.Date("1980-01-01"), as.Date("2024-12-01"), by = "month")
+years  <- format(dates, "%Y")
+months <- format(dates, "%m")
+
+cat("Date range:", format(dates[1], "%b %Y"), "to", format(tail(dates, 1), "%b %Y"), "\n")
+cat("Total months:", length(dates), "\n")
+cat("Variables:", paste(variables, collapse = ", "), "\n")
+cat("Estimated download size: ~35 GB\n")
+```
+
+---
+
+# Chunk 3 — Check available disk space
+
+Check that you have sufficient space before starting the download.
+
+```{r disk-space}
+# Check available space on your download drive
+# Adjust the path to match your drive
+disk_info <- system(paste("df -h", dirname(base_path)), intern = TRUE)
+cat(disk_info, sep = "\n")
+
+cat("\nYou need at least 50 GB free (35 GB data + 15 GB working space).\n")
+```
+
+---
+
+# Chunk 4 — Create output directories
+
+```{r create-dirs}
+# Create one directory per variable
+for (var in variables) {
+  dir_path <- file.path(base_path, var)
+  dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
+  cat("Created:", dir_path, "\n")
+}
+```
+
+---
+
+# Chunk 5 — Verify server connectivity
+
+Check that the THREDDS server is accessible before starting the full download.
+
+```{r test-connection}
+# Test a single file download
+test_url  <- "https://thredds.nci.org.au/thredds/fileServer/gh70/ANUClimate/v2-0/stable/month/rain/1980/ANUClimate_v2-0_rain_monthly_198001.nc"
+test_file <- file.path(base_path, "rain", "ANUClimate_v2-0_rain_monthly_198001.nc")
+
+if (!file.exists(test_file)) {
+  message("Testing server connection...")
+  tryCatch({
+    download.file(test_url, test_file, mode = "wb", quiet = FALSE)
+    cat("Connection OK. Test file downloaded successfully.\n")
+    cat("File size:", round(file.size(test_file) / 1e6, 1), "MB\n")
+  }, error = function(e) {
+    cat("ERROR: Could not connect to THREDDS server.\n")
+    cat("Check your internet connection and try again.\n")
+    cat("Error message:", e$message, "\n")
+  })
+} else {
+  cat("Test file already exists — server check skipped.\n")
+}
+```
+
+---
+
+# Chunk 6 — Verify downloaded file structure
+
+Check the test file opened correctly and has the expected structure.
+
+```{r verify-test}
+# Requires terra package
+if (!requireNamespace("terra", quietly = TRUE)) {
+  install.packages("terra")
+}
+library(terra)
+
+test_file <- file.path(base_path, "rain", "ANUClimate_v2-0_rain_monthly_198001.nc")
+
+if (file.exists(test_file)) {
+  r <- rast(test_file)
+  cat("=== Test file structure ===\n")
+  print(r)
+  cat("\nExtent:", as.character(ext(r)), "\n")
+  cat("Resolution:", res(r), "\n")
+  cat("Variable name:", names(r), "\n")
+  cat("Units:", units(r), "\n")
+  
+  # Check a value at Sydney
+  val <- extract(r, data.frame(x = 150.9, y = -33.9))
+  cat("Test value at Sydney (Jan 1980):", round(val[1, 2], 2), "mm\n")
+} else {
+  cat("Test file not found — run Chunk 5 first.\n")
+}
+```
+
+---
+
+# Chunk 7 — Run the full download
+
+This chunk downloads all files for all four variables from January 1980
+to December 2024. **Total size: approximately 35 GB.**
+
+**Expected time:** Several hours depending on your internet connection.
+The download is fully restartable — if interrupted, re-run this chunk
+and it will skip files that already exist.
+
+```{r download, eval=FALSE}
+# Base URL for THREDDS file server
+thredds_base <- "https://thredds.nci.org.au/thredds/fileServer/gh70/ANUClimate/v2-0/stable/month"
+
+# Track overall progress
+total_files   <- length(variables) * length(dates)
+downloaded    <- 0
+skipped       <- 0
+failed        <- 0
+failed_files  <- character(0)
+
+start_time <- Sys.time()
+
+for (var in variables) {
+  message("\n--- Downloading: ", var, " ---")
+
+  for (i in seq_along(dates)) {
+    yr <- years[i]
+    mo <- months[i]
+
+    filename <- paste0("ANUClimate_v2-0_", var, "_monthly_", yr, mo, ".nc")
+    url      <- paste0(thredds_base, "/", var, "/", yr, "/", filename)
+    destfile <- file.path(base_path, var, filename)
+
+    if (file.exists(destfile)) {
+      skipped <- skipped + 1
+      next
+    }
+
+    tryCatch({
+      download.file(url, destfile, mode = "wb", quiet = TRUE)
+      downloaded <- downloaded + 1
+    }, error = function(e) {
+      failed       <<- failed + 1
+      failed_files <<- c(failed_files, filename)
+      message("  FAILED: ", filename, " — ", e$message)
+    })
+
+    # Progress update every 60 files
+    total_done <- downloaded + skipped + failed
+    if (total_done %% 60 == 0) {
+      elapsed  <- round(difftime(Sys.time(), start_time, units = "mins"), 1)
+      pct      <- round(total_done / total_files * 100)
+      message("  Progress: ", total_done, "/", total_files,
+              " (", pct, "%) — ", elapsed, " min elapsed")
+    }
+  }
+}
+
+# Final summary
+elapsed_total <- round(difftime(Sys.time(), start_time, units = "mins"), 1)
+message("\n=== Download Complete ===")
+message("Downloaded: ", downloaded, " files")
+message("Skipped (existing): ", skipped, " files")
+message("Failed: ", failed, " files")
+message("Total time: ", elapsed_total, " minutes")
+
+if (failed > 0) {
+  message("\nFailed files:")
+  for (f in failed_files) message("  ", f)
+  message("\nRe-run this chunk to retry failed files.")
+}
+```
+
+---
+
+# Chunk 8 — Verify download completeness
+
+After the download finishes, check that all files are present and
+have reasonable file sizes.
+
+```{r verify-download}
+# Check file counts
+cat("=== File count check ===\n")
+expected <- length(dates)
+
+for (var in variables) {
+  files   <- list.files(file.path(base_path, var), pattern = "\\.nc$")
+  n       <- length(files)
+  status  <- ifelse(n == expected, "OK", paste("MISSING", expected - n, "files"))
+  cat(sprintf("  %-6s: %d / %d files — %s\n", var, n, expected, status))
+}
+
+# Check file sizes — should all be ~14-18 MB
+cat("\n=== File size check (sample) ===\n")
+for (var in variables) {
+  files <- list.files(file.path(base_path, var),
+                      pattern = "\\.nc$", full.names = TRUE)
+  if (length(files) > 0) {
+    sizes    <- file.size(files) / 1e6  # MB
+    min_size <- round(min(sizes), 1)
+    max_size <- round(max(sizes), 1)
+    n_small  <- sum(sizes < 5)  # files under 5MB are likely corrupt
+    cat(sprintf("  %-6s: %.1f – %.1f MB per file", var, min_size, max_size))
+    if (n_small > 0) cat(" — WARNING:", n_small, "files under 5MB (possibly corrupt)")
+    cat("\n")
+  }
+}
+```
+
+---
+
+# Chunk 9 — Check all four variables open correctly
+
+```{r verify-variables}
+library(terra)
+
+cat("=== Variable verification ===\n")
+
+test_files <- list()
+for (var in variables) {
+  f <- file.path(base_path, var,
+                 paste0("ANUClimate_v2-0_", var, "_monthly_198001.nc"))
+  if (file.exists(f)) {
+    r              <- rast(f)
+    test_files[[var]] <- r
+    val            <- extract(r, data.frame(x = 150.9, y = -33.9))
+    cat(sprintf("  %-6s: units = %-15s  Sydney Jan 1980 = %.2f\n",
+                var, units(r), val[1, 2]))
+  } else {
+    cat(sprintf("  %-6s: FILE NOT FOUND\n", var))
+  }
+}
+
+# Confirm all extents match
+cat("\n=== Extent consistency check ===\n")
+base_ext <- ext(test_files[["rain"]])
+for (var in c("tmax", "tmin", "srad")) {
+  match <- identical(base_ext, ext(test_files[[var]]))
+  cat(sprintf("  rain == %-6s: %s\n", var, ifelse(match, "OK", "MISMATCH — check files")))
+}
+
+cat("\nExpected units:\n")
+cat("  rain: mm month-1\n")
+cat("  tmax: degrees_C\n")
+cat("  tmin: degrees_C\n")
+cat("  srad: MJ m-2 day-1\n")
+```
+
+---
+
+# Chunk 10 — Summary and next steps
+
+```{r summary}
+library(terra)
+
+cat("=== Download Summary ===\n")
+cat("Base path:", base_path, "\n")
+cat("Variables: rain, tmax, tmin, srad\n")
+cat("Date range: January 1980 to December 2024\n")
+cat("Files per variable:", length(dates), "\n")
+
+# Total size on disk
+total_size <- 0
+for (var in variables) {
+  files      <- list.files(file.path(base_path, var),
+                            pattern = "\\.nc$", full.names = TRUE)
+  total_size <- total_size + sum(file.size(files))
+}
+cat("Total size on disk:", round(total_size / 1e9, 1), "GB\n")
+
+cat("\n=== Next Steps ===\n")
+cat("1. Open 02_spei_pipeline_local.R\n")
+cat("2. Update 'base_path' to match the path above\n")
+cat("3. Run the pipeline to generate SPEI-3, 6, 12, and 24 month outputs\n")
+cat("\nNote: the SPEI pipeline will create a 'spei' subfolder inside base_path\n")
+cat("containing NetCDF and GeoTIFF outputs for the 2010-2024 period.\n")
+```
+
+---
+
+# Data Citation
+
+When using ANUClimate v2.0 data in publications, cite as:
+
+> Hutchinson, M., Xu, T., Kesteven, J., Marang, I., and Evans, B. (2021).
+> *ANUClimate v2.0 monthly climate data for the Australian continent,
+> 1900 to present*. NCI Australia.
+> https://doi.org/10.25914/60a10acd183a2
+
+---
+
+# Variable Descriptions
+
+| Variable | Description | Units |
+|---|---|---|
+| `rain` | Monthly total rainfall | mm month⁻¹ |
+| `tmax` | Monthly mean daily maximum temperature | °C |
+| `tmin` | Monthly mean daily minimum temperature | °C |
+| `srad` | Monthly mean daily solar radiation | MJ m⁻² day⁻¹ |
+
+---
+
+*This workflow downloads data from the publicly accessible NCI THREDDS server.
+No NCI account is required. Data is available for the Australian continent
+at 0.01° (~1km) resolution from 1900 to present.*

@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+message: "If you use this dataset or code, please cite as below."
+type: dataset
+title: "Gridded SPEI for Australia 1980-2024 at 0.01 degree resolution derived from ANUClimate v2.0"
+authors:
+  - family-names: Bendall
+    given-names: "Eli R."
+    affiliation: "Hawkesbury Institute for the Environment, Western Sydney University"
+    orcid: "https://orcid.org/0000-0002-9120-3457"
+date-released: "2026-04-01"
+version: "1.0.0"
+doi: "10.5281/zenodo.19447029"
+repository-code: "https://github.com/erbendall/spei-australia"
+url: "https://github.com/erbendall/spei-australia"
+license: MIT
+keywords:
+  - SPEI
+  - drought index
+  - Australia
+  - climate
+  - ANUClimate
+  - gridded climate data
+  - drought monitoring
+  - ecological research
+abstract: >
+  Gridded Standardised Precipitation Evapotranspiration Index (SPEI) for the
+  Australian continent at 0.01 degree (~1 km) resolution, computed at 3, 6, 12
+  and 24 month timescales for the period January 2010 to December 2024, with a
+  reference period of January 1980 to December 2009. Derived from ANUClimate
+  v2.0 monthly climate data using Hargreaves potential evapotranspiration and
+  log-logistic distribution fitting. Developed at the Hawkesbury Institute for
+  the Environment, Western Sydney University.
+references:
+  - type: article
+    title: "A Multiscalar Drought Index Sensitive to Global Warming: The Standardized Precipitation Evapotranspiration Index"
+    authors:
+      - family-names: Vicente-Serrano
+        given-names: "Sergio M."
+      - family-names: Beguería
+        given-names: Santiago
+      - family-names: "López-Moreno"
+        given-names: "Juan I."
+    journal: "Journal of Climate"
+    year: 2010
+    doi: "10.1175/2009JCLI2909.1"
+  - type: dataset
+    title: "ANUClimate v2.0 monthly climate data for the Australian continent, 1900 to present"
+    authors:
+      - family-names: Hutchinson
+        given-names: Michael
+      - family-names: Xu
+        given-names: Tingbao
+    year: 2021
+    doi: "10.25914/60a10acd183a2"

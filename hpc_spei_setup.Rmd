@@ -1,0 +1,395 @@
+---
+title: "HPC setup and SPEI Tiled Pipeline Guide (Matrix Method)"
+author: "Eli R. Bendall, Hawkesbury Institute for the Environment, Western Sydney University"
+orcid: "0000-0002-9120-3457"
+date: "`r Sys.Date()`"
+note: "Code developed with AI assistance from Claude (Anthropic), https://claude.ai"
+output: html_document
+---
+
+# Overview
+
+This guide walks through everything needed to access NCI Gadi, set up the
+R environment, and submit the SPEI pipeline as a batch job. Run each chunk
+in order where R code is provided. Shell commands (bash) should be run in
+Terminal on your Mac or in the Gadi terminal after SSH login.
+
+The ANUClimate v2.0 data is **already on Gadi** at
+`/g/data/gh70/ANUClimate/v2-0/stable/month/` — no data upload required.
+
+---
+
+# Part 1 — NCI Account Setup
+
+## Step 1.1 — Complete NCI Registration
+
+If not already done, complete registration at:
+**<https://my.nci.org.au/mancini/signup/0>**
+
+During registration:
+
+- Use your WSU institutional email address
+- Enter the project code provided by your colleague
+- Leave the software access field blank
+- Agree to the conditions of use
+
+Account approval typically takes **1–2 business days**. You will receive a
+confirmation email with your NCI username (usually initials + numbers,
+e.g. `ab1234`).
+
+---
+
+## Step 1.2 — Request Access to the ANUClimate Data Project
+
+The ANUClimate data lives in NCI project `gh70`. This must be requested
+separately from your compute project.
+
+**Steps:**
+
+1. Log into <https://my.nci.org.au>
+2. Click **Projects** in the top menu
+3. Search for `gh70`
+4. Click **Request Membership**
+5. Add a brief justification, e.g.:
+   *"I need access to ANUClimate v2.0 monthly climate data for SPEI
+   calculation as part of an ecological drought analysis project."*
+
+Access is usually granted within **1 business day**.
+
+---
+
+## Step 1.3 — Verify Project Memberships
+
+Once both approvals arrive, log into <https://my.nci.org.au> and confirm
+you are a member of:
+
+- Your WSU compute project (e.g. `ab12`) — provides CPU time and storage
+- `gh70` — provides access to ANUClimate data
+
+---
+
+# Part 2 — Connecting to Gadi
+
+## Step 2.1 — SSH into Gadi
+
+Open Terminal on your Mac and connect:
+
+```bash
+ssh YOUR_USERNAME@gadi.nci.org.au
+```
+
+Replace `YOUR_USERNAME` with your NCI username (from the approval email).
+You will be prompted for your NCI password.
+
+After login you will see a prompt like:
+```
+[ab1234@gadi-login-07 ~]$
+```
+
+---
+
+## Step 2.2 — Understand the Gadi Filesystem
+
+Gadi has three key storage locations:
+
+| Path | Purpose | Notes |
+|---|---|---|
+| `/home/YOUR_USERNAME/` | Home directory | 10GB limit — scripts and configs only |
+| `/scratch/YOUR_PROJECT/` | Fast scratch | Large temporary files — **deleted after 90 days** |
+| `/g/data/YOUR_PROJECT/` | Persistent storage | Outputs and data to keep long-term |
+| `/g/data/gh70/` | ANUClimate data | Read-only — already there, no download needed |
+
+**All pipeline outputs should go to `/g/data/YOUR_PROJECT/`.**
+
+---
+
+## Step 2.3 — Create Working Directories
+
+Run these commands on Gadi after SSH login:
+
+```bash
+# Replace YOUR_PROJECT with your actual project code
+PROJECT=YOUR_PROJECT
+
+# Create output and scratch directories
+mkdir -p /g/data/$PROJECT/spei_outputs
+mkdir -p /scratch/$PROJECT/spei_temp
+
+# Create a directory for your scripts
+mkdir -p ~/spei
+cd ~/spei
+
+echo "Directories created successfully"
+```
+
+---
+
+# Part 3 — Install Required R Packages
+
+R packages are installed once to your home directory and persist across
+sessions. This only needs to be done once.
+
+## Step 3.1 — Load R Module and Install Packages
+
+On Gadi (after SSH login):
+
+```bash
+# Load R — always specify version
+module load R/4.3.1
+
+# Install required packages
+R --vanilla -e "
+install.packages(
+  c('terra', 'SPEI', 'lubridate'),
+  repos = 'https://mirror.aarnet.edu.au/pub/CRAN/',
+  lib   = Sys.getenv('R_LIBS_USER')
+)
+"
+```
+
+If prompted to create a personal library directory, type `y`.
+
+---
+
+## Step 3.2 — Verify Packages Installed Correctly
+
+```bash
+R --vanilla -e "
+library(terra)
+library(SPEI)
+library(lubridate)
+cat('All packages loaded successfully\n')
+cat('terra version:', as.character(packageVersion('terra')), '\n')
+cat('SPEI version:',  as.character(packageVersion('SPEI')),  '\n')
+"
+```
+
+If any package fails to load, re-run the install command from Step 3.1.
+
+---
+
+## Step 3.3 — Verify ANUClimate Data is Accessible
+
+```bash
+# Check gh70 data is readable
+ls /g/data/gh70/ANUClimate/v2-0/stable/month/
+
+# Should show: evap  frst  pw  rain  srad  tavg  tmax  tmin  vp  vpd
+
+# Check a specific file
+ls /g/data/gh70/ANUClimate/v2-0/stable/month/rain/1980/ | head -5
+```
+
+If you get "Permission denied", your `gh70` membership has not yet been
+approved — wait and try again later.
+
+---
+
+# Part 4 — Transfer Pipeline Files to Gadi
+
+## Step 4.1 — Update Project Code in Pipeline Files
+
+Before transferring, open both `02_spei_tile_hpc.R` and `spei_submit.sh`
+on your Mac and replace **all instances** of `YOUR_PROJECT` with your
+actual NCI project code.
+
+---
+
+## Step 4.2 — Transfer Files to Gadi
+
+Run this in **Terminal on your Mac** (not on Gadi):
+
+```bash
+# Replace YOUR_USERNAME and YOUR_PROJECT with your actual values
+scp 02_spei_tile_hpc.R  02_spei_merge_hpc.R  spei_tile_job.sh  spei_merge_job.sh  spei_submit.sh YOUR_USERNAME@gadi.nci.org.au:~/spei/
+```
+
+---
+
+## Step 4.3 — Verify Files Transferred
+
+Back on Gadi:
+
+```bash
+ls ~/spei/
+# Should show: spei_pipeline_gadi.R  spei_job.sh
+```
+
+---
+
+# Part 5 — Submit the Job
+
+## Step 5.1 — Do a Quick Sanity Check First
+
+Before submitting the full job, verify the pipeline script can at least
+find the data and load packages:
+
+```bash
+cd ~/spei
+
+# Run a quick interactive test — requests 10 minutes on a login node
+module load R/4.3.1
+R --vanilla -e "
+library(terra)
+library(SPEI)
+library(lubridate)
+
+# Check data is accessible
+f <- '/g/data/gh70/ANUClimate/v2-0/stable/month/rain/1980/ANUClimate_v2-0_rain_monthly_198001.nc'
+r <- terra::rast(f)
+cat('Test file loaded OK\n')
+cat('Extent:', as.character(terra::ext(r)), '\n')
+cat('Resolution:', terra::res(r), '\n')
+"
+```
+
+---
+
+## Step 5.2 — Submit the PBS Job
+
+```bash
+cd ~/spei
+qsub spei_job.sh
+```
+
+The output will show your job ID:
+```
+1234567.gadi-pbs
+```
+
+**Save this job ID** — you need it to monitor and manage the job.
+
+---
+
+## Step 5.3 — Monitor Job Status
+
+```bash
+# Check job status — Q = queued, R = running, F = finished
+qstat -u $USER
+
+# More detailed status for a specific job
+qstat -f 1234567.gadi-pbs
+
+# Watch the live log output while running
+tail -f ~/spei/spei_pipeline.log
+
+# Check your project's service unit usage
+nci_account -P YOUR_PROJECT
+```
+
+---
+
+## Step 5.4 — Check Output After Job Completes
+
+```bash
+# Check the log file for completion message and any errors
+cat ~/spei/spei_pipeline.log
+
+# Verify output files were created
+ls /g/data/YOUR_PROJECT/spei_outputs/
+
+# Check a sample TIF has valid data
+module load R/4.3.1
+R --vanilla -e "
+library(terra)
+r <- rast('/g/data/YOUR_PROJECT/spei_outputs/SPEI6_monthly_tifs/SPEI6_201001.tif')
+print(terra::global(r, 'range', na.rm = TRUE))
+vals <- terra::extract(r, data.frame(x = 150, y = -33))
+cat('Value at Sydney (Jan 2010):', vals[1,2], '\n')
+"
+```
+
+---
+
+# Part 6 — Download Outputs to Your Mac
+
+Once the job is complete, download the outputs from Gadi to your LaCie
+drive. Run this in **Terminal on your Mac**:
+
+```bash
+# Download all SPEI outputs 
+scp -r YOUR_USERNAME@gadi.nci.org.au:/g/data/YOUR_PROJECT/spei_outputs \
+    "/path/to/local/spei_outputs" # Update to your local output directory
+```
+
+For large transfers, `rsync` is more robust than `scp` as it can resume
+if interrupted:
+
+```bash
+rsync -avz --progress \
+  YOUR_USERNAME@gadi.nci.org.au:/g/data/YOUR_PROJECT/spei_outputs/ \
+  "/path/to/local/spei_outputs" # Update to your local output directory
+```
+
+---
+
+# Part 7 — Troubleshooting
+
+## Job fails immediately
+
+Check the log file:
+```bash
+cat ~/spei/spei_pipeline.log
+```
+
+Common causes:
+- Wrong project code in `spei_job.sh` → update and resubmit
+- `gh70` access not yet approved → wait and resubmit
+- R packages not installed → rerun Step 3.1
+
+## Job runs but TIFs are empty
+
+Check that `gh70` data files are readable and that the `land_mask` is
+being applied correctly:
+```bash
+module load R/4.3.1
+R --vanilla -e "
+library(terra)
+f <- '/g/data/gh70/ANUClimate/v2-0/stable/month/rain/1980/ANUClimate_v2-0_rain_monthly_198001.nc'
+r <- terra::rast(f)
+v <- terra::extract(r, data.frame(x = 150, y = -33))
+cat('Rain value at Sydney Jan 1980:', v[1,2], '\n')
+"
+```
+
+## Job killed before finishing
+
+The checkpoint system means it is safe to resubmit — completed SPEI
+scales will be skipped automatically. Just resubmit:
+```bash
+qsub spei_job.sh
+```
+
+## Out of service units
+
+Contact your WSU research computing team or NCI helpdesk:
+**help@nci.org.au**
+
+---
+
+# Quick Reference — Useful Gadi Commands
+
+```bash
+# Check job queue
+qstat -u $USER
+
+# Delete a job
+qdel JOB_ID
+
+# Check storage usage
+lquota
+
+# Check service unit balance
+nci_account -P YOUR_PROJECT
+
+# List loaded modules
+module list
+
+# Available R versions
+module avail R
+```
+
+---
+
+*Guide prepared for SPEI pipeline deployment on NCI Gadi.
+ANUClimate v2.0 source data: https://doi.org/10.25914/60a10acd183a2*
