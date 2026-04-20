@@ -1,6 +1,7 @@
 ---
 title: "HPC setup and SPEI Tiled Pipeline Guide (Matrix Method)"
 author: "Eli R. Bendall, Hawkesbury Institute for the Environment, Western Sydney University"
+funding: "This work was supported by Western Sydney University and with funding from the Australian Government under the National Environmental Science Program's Resilient Landscapes Hub"
 orcid: "0000-0002-9120-3457"
 date: "`r Sys.Date()`"
 note: "Code developed with AI assistance from Claude (Anthropic), https://claude.ai"

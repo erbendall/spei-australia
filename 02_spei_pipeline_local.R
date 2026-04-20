@@ -5,6 +5,10 @@
 #              Hawkesbury Institute for the Environment,
 #              Western Sydney University, NSW, Australia
 #
+# Funding:     This work was supported by Western Sydney University and with
+#              funding from the Australian Government under the National 
+#              Environmental Science Program's Resilient Landscapes Hub.
+#
 # AI Partner:  Claude (Anthropic, claude.ai) — assisted in code development,
 #              debugging, and pipeline design throughout this project.
 #              All scientific decisions and final code review remain the
@@ -53,17 +57,21 @@
 #   For interrupted runs: resume by re-running — completed tiles are skipped
 #   For failed individual tile-scale combinations, use 02_spei_local_missing.R
 #
-# Known limitations:
-#   SPEI values of -Inf occur in hyper-arid regions and during extreme drought
-#   periods where accumulated CWB approaches zero. This is a known limitation
-#   of the SPEI method documented by Vicente-Serrano et al. and in the SPEIbase
-#   global dataset. See README.md for full details and the -Inf cell count table.
-#
 # Citation:
 #   Bendall, E.R. (2026). Gridded SPEI for Australia 1980-2024 at 0.01 degree
 #   resolution derived from ANUClimate v2.0. Zenodo.
 #   https://doi.org/10.5281/zenodo.XXXXXXX
 #   Code: https://github.com/erbendall/spei-australia
+#
+# Known limitations:
+#   SPEI values of -Inf occur in hyper-arid regions and during extreme drought
+#   periods where log-logistic distribution fitting fails. These are retained
+#   as -Inf in GeoTIFF outputs and stored as missing values (-9999) in NetCDF
+#   outputs. See README.md for full documentation and references.
+#
+#   SPEI values within the reference period (January 1980 - December 2009)
+#   are self-referential and should be interpreted with caution. The 2010-2024
+#   monthly GeoTIFF outputs are the primary scientific deliverable.
 # =============================================================================
 
 library(terra)

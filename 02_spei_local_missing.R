@@ -5,6 +5,10 @@
 #              Hawkesbury Institute for the Environment,
 #              Western Sydney University, NSW, Australia
 #
+# Funding:     This work was supported by Western Sydney University and with
+#              funding from the Australian Government under the National 
+#              Environmental Science Program's Resilient Landscapes Hub.
+#
 # AI Partner:  Claude (Anthropic, claude.ai) — assisted in code development,
 #              debugging, and pipeline design throughout this project.
 #              This script was developed collaboratively between the author

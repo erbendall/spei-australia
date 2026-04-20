@@ -2,14 +2,14 @@
 
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![License: MIT](https://img.shields.io/badge/Code_License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19447029.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19447029.svg)](https://doi.org/10.5281/zenodo.19447029)
 
 Gridded Standardised Precipitation Evapotranspiration Index (SPEI) for the Australian continent at **0.01° (~1 km) resolution**, computed at 3, 6, 12 and 24 month timescales for the period January 2010 – December 2024.
 
 **Author:** Eli R. Bendall  
 Hawkesbury Institute for the Environment, Western Sydney University, NSW, Australia  
-ORCID: [0000-0002-9120-3457](https://orcid.org/0000-0002-9120-3457)
-
+Funding: National Environmental Science Program (NESP) Resilient Landscapes Hub  
+ORCID: [0000-0002-9120-3457](https://orcid.org/0000-0002-9120-3457)  
 Code developed with AI assistance from Claude (Anthropic) — https://claude.ai
 
 ---
@@ -113,6 +113,20 @@ SPEI was computed from the CWB timeseries using the `SPEI` R package (Beguería 
 - **Timescales:** 3, 6, 12, and 24 months
 
 SPEI values were computed for all land cells across the full period (January 1980 – December 2024). Output GeoTIFFs are provided for the target period (January 2010 – December 2024) only; full-period timeseries are available in the NetCDF files.
+
+### Note on reference period SPEI values
+
+SPEI values are provided for the full 1980–2024 period in the NetCDF outputs, 
+including the 1980–2009 reference period itself. Values within the reference 
+period are self-referential — they describe how each month ranked within the 
+log-logistic distribution that was fitted using all months in that same period. 
+This is standard practice in SPEI computation and is consistent with the 
+approach used in the global SPEIbase dataset (Beguería & Vicente-Serrano 2023). 
+However, users should exercise caution when interpreting SPEI values within the 
+reference period, as they do not represent anomalies relative to an independent 
+baseline. The 2010–2024 monthly GeoTIFF outputs are the primary scientific 
+deliverable of this dataset, as these values are genuinely out-of-sample 
+relative to the reference period.
 
 ### 4. Computational Approach
 
@@ -219,7 +233,7 @@ If you use this dataset, please cite:
 > Bendall, E.R. (2026). Gridded SPEI for Australia 1980–2024 at 0.01° resolution derived from ANUClimate v2.0. Zenodo. https://doi.org/10.5281/zenodo.19447029
 
 **Code:**
-> Bendall, E.R. (2026). SPEI Australia pipeline (v1.0). GitHub/Zenodo. https://doi.org/10.5281/zenodo.19447029
+> Bendall, E.R. (2026). SPEI Australia pipeline (v1.0). GitHub/Zenodo. https://doi.org/10.5281/zenodo.19629231
 
 **Input data:**
 > Hutchinson, M., Xu, T., Kesteven, J., Marang, I., and Evans, B. (2021). ANUClimate v2.0 monthly climate data for the Australian continent, 1900 to present. NCI Australia. https://doi.org/10.25914/60a10acd183a2
@@ -237,9 +251,9 @@ If you use this dataset, please cite:
 
 ## Acknowledgements
 
-This dataset was produced using resources from the National Computational Infrastructure (NCI), which is supported by the Australian Government through the Western Sydney University partner share.
+This dataset was produced using resources from the National Computational Infrastructure (NCI), which is supported by the Australian Government through the Western Sydney University partner share. This work was supported by Western Sydney University and with funding from the Australian Government under the National Environmental Science Program's Resilient Landscapes Hub. 
 
-Code was developed with AI assistance from Claude (Anthropic). https://claude.ai
+Code developed with AI assistance from Claude (Anthropic). https://claude.ai
 
 ---
 

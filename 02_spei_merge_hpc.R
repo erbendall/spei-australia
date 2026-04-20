@@ -5,6 +5,10 @@
 #              Hawkesbury Institute for the Environment,
 #              Western Sydney University, NSW, Australia
 #
+# Funding:     This work was supported by Western Sydney University and with
+#              funding from the Australian Government under the National 
+#              Environmental Science Program's Resilient Landscapes Hub.
+#
 # AI Partner:  Claude (Anthropic, claude.ai) — assisted in code development,
 #              debugging, and pipeline design throughout this project.
 #              This script was developed collaboratively between the author
@@ -43,6 +47,16 @@
 #   resolution derived from ANUClimate v2.0. Zenodo.
 #   https://doi.org/10.5281/zenodo.XXXXXXX
 #   Code: https://github.com/erbendall/spei-australia
+#
+# Known limitations:
+#   SPEI values of -Inf occur in hyper-arid regions and during extreme drought
+#   periods where log-logistic distribution fitting fails. These are retained
+#   as -Inf in GeoTIFF outputs and stored as missing values (-9999) in NetCDF
+#   outputs. See README.md for full documentation and references.
+#
+#   SPEI values within the reference period (January 1980 - December 2009)
+#   are self-referential and should be interpreted with caution. The 2010-2024
+#   monthly GeoTIFF outputs are the primary scientific deliverable.
 # =============================================================================
 
 library(terra)

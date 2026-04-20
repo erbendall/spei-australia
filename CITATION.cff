@@ -1,12 +1,14 @@
 cff-version: 1.2.0
 message: "If you use this dataset or code, please cite as below."
 type: dataset
-title: "Gridded SPEI for Australia 1980-2024 at 0.01 degree resolution derived from ANUClimate v2.0"
+title: "Gridded SPEI for Australia 1980-2024 at 0.01-degree resolution derived from ANUClimate v2.0"
 authors:
   - family-names: Bendall
     given-names: "Eli R."
     affiliation: "Hawkesbury Institute for the Environment, Western Sydney University"
     orcid: "https://orcid.org/0000-0002-9120-3457"
+funding:
+  - "This work was supported by Western Sydney University and with funding from the Australian Government under the National Environmental Science Program's Resilient Landscapes Hub."
 date-released: "2026-04-01"
 version: "1.0.0"
 doi: "10.5281/zenodo.19447029"
